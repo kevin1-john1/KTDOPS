@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/kevin1-john1/KTDOPS.git
     targetRevision: main
-    path: project-gitops/overlays/production
+    path: gitops-config/project/overlays/production
   destination:
     server: https://kubernetes.default.svc
     namespace: project-production

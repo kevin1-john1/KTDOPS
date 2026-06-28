@@ -113,3 +113,15 @@ Query used to show the number of Pods created by StatefulSets in the monitoring 
 
 ```promql
 count(kube_pod_info{namespace="monitoring",created_by_kind="StatefulSet"})
+
+## Exercise 4.10: GitOps code and configuration separation
+
+For this exercise, the project uses the same GitHub repository but separates application source code and Kubernetes configuration into different top-level directories.
+
+- Application source code is stored in `todo-app/`, `todo-backend/`, `broadcaster/`, `wikipedia-todo-cron/`, and `log-output/`.
+- GitOps configuration is stored in `gitops-config/`.
+- Argo CD watches only the configuration paths under `gitops-config/`.
+- GitHub Actions builds and pushes Docker images, then updates Kustomize image tags under `gitops-config/`.
+- Argo CD then pulls the updated desired state from Git and syncs it to the cluster.
+
+This keeps the GitOps flow working while avoiding a second repository.

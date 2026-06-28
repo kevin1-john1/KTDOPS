@@ -1,0 +1,88 @@
+name: Same repo GitOps release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+    paths:
+      - "todo-app/**"
+      - "todo-backend/**"
+      - "broadcaster/**"
+      - "wikipedia-todo-cron/**"
+      - "log-output/**"
+      - ".github/workflows/gitops-same-repo.yaml"
+
+permissions:
+  contents: write
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-publish-update-config:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push images
+        run: |
+          docker build -t "$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG" ./todo-app
+          docker build -t "$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG" ./todo-backend
+          docker build -t "$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG" ./broadcaster
+          docker build -t "$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG" ./wikipedia-todo-cron
+          docker build -t "$DOCKERHUB_USERNAME/log-output-writer:$IMAGE_TAG" ./log-output/writer
+          docker build -t "$DOCKERHUB_USERNAME/log-output-reader:$IMAGE_TAG" ./log-output/reader
+
+          docker push "$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/log-output-writer:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/log-output-reader:$IMAGE_TAG"
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Choose target overlay
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "TARGET_OVERLAY=gitops-config/project/overlays/production" >> "$GITHUB_ENV"
+            echo "RELEASE_KIND=production" >> "$GITHUB_ENV"
+          else
+            echo "TARGET_OVERLAY=gitops-config/project/overlays/staging" >> "$GITHUB_ENV"
+            echo "RELEASE_KIND=staging" >> "$GITHUB_ENV"
+          fi
+
+      - name: Update project image tags
+        working-directory: ${{ env.TARGET_OVERLAY }}
+        run: |
+          kustomize edit set image PROJECT/TODO_APP="$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG"
+          kustomize edit set image PROJECT/TODO_BACKEND="$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG"
+          kustomize edit set image PROJECT/BROADCASTER="$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG"
+          kustomize edit set image PROJECT/WIKIPEDIA_TODO_CRON="$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG"
+
+      - name: Update log-output image tags
+        working-directory: gitops-config/log-output
+        run: |
+          kustomize edit set image PROJECT/LOG_OUTPUT_WRITER="$DOCKERHUB_USERNAME/log-output-writer:$IMAGE_TAG"
+          kustomize edit set image PROJECT/LOG_OUTPUT_READER="$DOCKERHUB_USERNAME/log-output-reader:$IMAGE_TAG"
+
+      - name: Commit updated manifests
+        uses: EndBug/add-and-commit@v10
+        with:
+          add: "gitops-config"
+          message: "Release ${{ env.RELEASE_KIND }} from ${{ github.sha }}"
+          default_author: github_actions
