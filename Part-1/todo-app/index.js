@@ -10,6 +10,12 @@ const TEN_MINUTES = 10 * 60 * 1000;
 
 fs.mkdirSync(CACHE_DIR, { recursive: true });
 
+const todos = [
+  "Learn Kubernetes basics",
+  "Create a todo app",
+  "Add persistent storage"
+];
+
 const readMeta = () => {
   if (!fs.existsSync(META_PATH)) {
     return null;
@@ -69,11 +75,48 @@ const renderHtml = () => `
 <html>
   <head>
     <title>Todo App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 40px auto;
+      }
+
+      img {
+        width: 100%;
+        max-width: 600px;
+        display: block;
+        margin-bottom: 24px;
+      }
+
+      input {
+        width: 320px;
+        padding: 8px;
+      }
+
+      button {
+        padding: 8px 12px;
+      }
+    </style>
   </head>
   <body>
     <h1>Todo App</h1>
-    <img src="/image.jpg" width="600" />
-    <p>Hello from the DevOps with Kubernetes todo app!</p>
+
+    <img src="/image.jpg" alt="Random image" />
+
+    <form>
+      <input
+        type="text"
+        maxlength="140"
+        placeholder="Write a todo"
+      />
+      <button type="button">Send</button>
+    </form>
+
+    <h2>Todos</h2>
+    <ul>
+      ${todos.map((todo) => `<li>${todo}</li>`).join("")}
+    </ul>
   </body>
 </html>
 `;
