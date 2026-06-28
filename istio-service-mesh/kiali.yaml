@@ -1,0 +1,4 @@
+external_services:
+  prometheus:
+    enabled: true
+    url: http://prom-prometheus-server.monitoring:80
