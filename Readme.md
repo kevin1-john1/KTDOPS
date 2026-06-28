@@ -44,6 +44,19 @@
 * [3.11 Project resource requests and limits](https://github.com/kevin1-john1/KTDOPS/tree/3.11)
 * [3.12 GKE todo creation logs](https://github.com/kevin1-john1/KTDOPS/tree/3.12)
 
+## Chapter 5
+
+* [4.1 Readiness probes for Log output and Ping-pong](https://github.com/kevin1-john1/KTDOPS/tree/4.1)
+* [4.2 Project health checks and break button](https://github.com/kevin1-john1/KTDOPS/tree/4.2)
+* [4.3 Prometheus StatefulSet pod query](https://github.com/kevin1-john1/KTDOPS/tree/4.3)
+* [4.4 Ping-pong canary AnalysisTemplate](https://github.com/kevin1-john1/KTDOPS/tree/4.4)
+* [4.5 Todo done field](https://github.com/kevin1-john1/KTDOPS/tree/4.5)
+* [4.6 Todo broadcaster with NATS](https://github.com/kevin1-john1/KTDOPS/tree/4.6)
+* [4.7 Log output GitOps](https://github.com/kevin1-john1/KTDOPS/tree/4.7)
+* [4.8 Project GitOps](https://github.com/kevin1-john1/KTDOPS/tree/4.8)
+* [4.9 Project staging and production GitOps environments](https://github.com/kevin1-john1/KTDOPS/tree/4.9)
+* [4.10 Project with separated GitOps configuration](https://github.com/kevin1-john1/KTDOPS/tree/4.10)
+
 ## Exercise 3.9: DBaaS vs DIY PostgreSQL
 
 ### DBaaS: Google Cloud SQL for PostgreSQL
@@ -106,22 +119,22 @@ DIY PostgreSQL needs a custom backup process. In this project, that means creati
 
 For a real production application, I would prefer Cloud SQL because it reduces maintenance work and provides managed backups, restore features, and reliability options. For this course project, DIY PostgreSQL on GKE is acceptable because it is cheaper, easier to keep inside Kubernetes manifests, and useful for learning StatefulSets, PersistentVolumeClaims, Secrets, CronJobs, and backups.
 
-
 ## Exercise 4.3: Prometheus query
 
 Query used to show the number of Pods created by StatefulSets in the monitoring namespace:
 
 ```promql
 count(kube_pod_info{namespace="monitoring",created_by_kind="StatefulSet"})
+```
 
 ## Exercise 4.10: GitOps code and configuration separation
 
 For this exercise, the project uses the same GitHub repository but separates application source code and Kubernetes configuration into different top-level directories.
 
-- Application source code is stored in `todo-app/`, `todo-backend/`, `broadcaster/`, `wikipedia-todo-cron/`, and `log-output/`.
-- GitOps configuration is stored in `gitops-config/`.
-- Argo CD watches only the configuration paths under `gitops-config/`.
-- GitHub Actions builds and pushes Docker images, then updates Kustomize image tags under `gitops-config/`.
-- Argo CD then pulls the updated desired state from Git and syncs it to the cluster.
+* Application source code is stored in `todo-app/`, `todo-backend/`, `broadcaster/`, `wikipedia-todo-cron/`, and `log-output/`.
+* GitOps configuration is stored in `gitops-config/`.
+* Argo CD watches only the configuration paths under `gitops-config/`.
+* GitHub Actions builds and pushes Docker images, then updates Kustomize image tags under `gitops-config/`.
+* Argo CD then pulls the updated desired state from Git and syncs it to the cluster.
 
 This keeps the GitOps flow working while avoiding a second repository.
