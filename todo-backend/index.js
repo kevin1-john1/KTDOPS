@@ -126,9 +126,49 @@ const parseTodoContent = (body) => {
   }
 };
 
+let isHealthy = true;
+
+const databaseIsReady = async () => {
+  await pool.query("SELECT 1");
+};
+
+const healthCheck = async () => {
+  if (!isHealthy) {
+    throw new Error("Application was manually broken");
+  }
+
+  await databaseIsReady();
+};
+
 const server = http.createServer(async (req, res) => {
   try {
     await initialized;
+
+    if (req.method === "GET" && req.url === "/healthz") {
+      try {
+        await healthCheck();
+
+        sendJson(res, 200, { status: "ok" });
+      } catch (error) {
+        sendJson(res, 500, { status: "unhealthy", error: error.message });
+      }
+
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/break") {
+      isHealthy = false;
+
+      log("app_broken_manually");
+
+      sendJson(res, 200, { status: "broken" });
+      return;
+    }
+
+    if (!isHealthy) {
+      sendJson(res, 500, { error: "Application is unhealthy" });
+      return;
+    }
 
     if (req.method === "GET" && req.url === "/todos") {
       log("todos_requested", {

@@ -24,6 +24,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: todo-app-config
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
           resources:
             requests:
               cpu: "50m"

@@ -168,6 +168,10 @@ const renderHtml = (todos, errorMessage = "") => `
       <button type="submit">Send</button>
     </form>
 
+    <form action="/break" method="post" style="margin-top: 24px;">
+      <button type="submit">Break app</button>
+    </form>
+
     ${errorMessage ? `<p class="error">${errorMessage}</p>` : ""}
 
     <h2>Todos</h2>
@@ -177,6 +181,16 @@ const renderHtml = (todos, errorMessage = "") => `
   </body>
 </html>
 `;
+
+const breakBackend = async () => {
+  const response = await fetch(`${TODO_BACKEND_URL}/break`, {
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Break request failed with status ${response.status}`);
+  }
+};
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -205,6 +219,14 @@ const server = http.createServer(async (req, res) => {
       }
 
       await createTodo(content);
+
+      res.writeHead(303, { Location: "/" });
+      res.end();
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/break") {
+      await breakBackend();
 
       res.writeHead(303, { Location: "/" });
       res.end();
