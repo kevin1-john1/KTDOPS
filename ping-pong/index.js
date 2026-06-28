@@ -77,12 +77,6 @@ const server = http.createServer(async (req, res) => {
     await initialized;
 
     if (req.method === "GET" && req.url === "/") {
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      res.end("ping-pong is healthy\n");
-      return;
-    }
-
-    if (req.method === "GET" && req.url === "/pingpong") {
       const previous = await incrementAndReturnPrevious();
 
       res.writeHead(200, { "Content-Type": "text/plain" });
