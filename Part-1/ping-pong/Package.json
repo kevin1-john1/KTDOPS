@@ -1,0 +1,9 @@
+{
+  "name": "ping-pong",
+  "version": "1.0.0",
+  "description": "DevOps with Kubernetes ping-pong app",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
