@@ -15,7 +15,13 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: kevinjohn971/todo-backend:2.6
+          image: kevinjohn971/todo-backend:2.8
           envFrom:
             - configMapRef:
                 name: todo-backend-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: todo-db-secret
+                  key: DATABASE_URL
