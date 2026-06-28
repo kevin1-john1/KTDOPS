@@ -17,6 +17,17 @@ const pool = new Pool({
   connectionString: DATABASE_URL
 });
 
+const log = (event, data = {}) => {
+  console.log(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      service: "todo-backend",
+      event,
+      ...data
+    })
+  );
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const parseInitialTodos = () => {
@@ -51,13 +62,14 @@ const initializeDatabase = async () => {
         }
       }
 
-      console.log("Todo database initialized");
+      log("database_initialized");
       return;
     } catch (error) {
-      console.error(
-        `Database initialization failed, attempt ${attempt}/${maxAttempts}:`,
-        error.message
-      );
+      log("database_initialization_failed", {
+        attempt,
+        maxAttempts,
+        error: error.message
+      });
 
       await sleep(2000);
     }
@@ -104,11 +116,26 @@ const createTodo = async (content) => {
   return result.rows[0];
 };
 
+const parseTodoContent = (body) => {
+  try {
+    const parsed = JSON.parse(body);
+    return parsed.content || "";
+  } catch {
+    const params = new URLSearchParams(body);
+    return params.get("content") || "";
+  }
+};
+
 const server = http.createServer(async (req, res) => {
   try {
     await initialized;
 
     if (req.method === "GET" && req.url === "/todos") {
+      log("todos_requested", {
+        method: req.method,
+        path: req.url
+      });
+
       const todos = await getTodos();
       sendJson(res, 200, todos);
       return;
@@ -116,41 +143,61 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && req.url === "/todos") {
       const body = await readRequestBody(req);
+      const content = parseTodoContent(body).trim();
 
-      let content = "";
-
-      try {
-        const parsed = JSON.parse(body);
-        content = parsed.content || "";
-      } catch {
-        const params = new URLSearchParams(body);
-        content = params.get("content") || "";
-      }
-
-      content = content.trim();
+      log("todo_received", {
+        method: req.method,
+        path: req.url,
+        content,
+        length: content.length
+      });
 
       if (!content) {
+        log("todo_rejected_empty", {
+          reason: "Todo content is required"
+        });
+
         sendJson(res, 400, { error: "Todo content is required" });
         return;
       }
 
       if (content.length > 140) {
+        log("todo_rejected_too_long", {
+          reason: "Todo must be 140 characters or less",
+          content,
+          length: content.length
+        });
+
         sendJson(res, 400, { error: "Todo must be 140 characters or less" });
         return;
       }
 
       const todo = await createTodo(content);
+
+      log("todo_created", {
+        id: todo.id,
+        content: todo.content,
+        length: todo.content.length
+      });
+
       sendJson(res, 201, todo);
       return;
     }
 
     sendJson(res, 404, { error: "Not found" });
   } catch (error) {
-    console.error(error.message);
+    log("request_failed", {
+      method: req.method,
+      path: req.url,
+      error: error.message
+    });
+
     sendJson(res, 500, { error: "Internal server error" });
   }
 });
 
 server.listen(PORT, () => {
-  console.log(`Todo backend started in port ${PORT}`);
+  log("server_started", {
+    port: PORT
+  });
 });
