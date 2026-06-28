@@ -1,0 +1,73 @@
+name: GitOps release project
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "todo-app/**"
+      - "todo-backend/**"
+      - "wikipedia-todo-cron/**"
+      - "broadcaster/**"
+      - "project-gke/**"
+      - ".github/workflows/project-gitops.yaml"
+
+permissions:
+  contents: write
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-publish-release:
+    name: Build, publish and update manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and publish todo-app
+        run: |
+          docker build -t "$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG" ./todo-app
+          docker push "$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG"
+
+      - name: Build and publish todo-backend
+        run: |
+          docker build -t "$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG" ./todo-backend
+          docker push "$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG"
+
+      - name: Build and publish wikipedia cron
+        run: |
+          docker build -t "$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG" ./wikipedia-todo-cron
+          docker push "$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG"
+
+      - name: Build and publish broadcaster
+        run: |
+          docker build -t "$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG" ./broadcaster
+          docker push "$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG"
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Update Kustomize images
+        working-directory: project-gke
+        run: |
+          kustomize edit set image PROJECT/TODO_APP="$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG"
+          kustomize edit set image PROJECT/TODO_BACKEND="$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG"
+          kustomize edit set image PROJECT/WIKIPEDIA_TODO_CRON="$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG"
+          kustomize edit set image PROJECT/BROADCASTER="$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG"
+
+      - name: Commit updated project image tags
+        uses: EndBug/add-and-commit@v10
+        with:
+          add: "project-gke/kustomization.yaml"
+          message: "Release project ${{ github.sha }}"
+          default_author: github_actions

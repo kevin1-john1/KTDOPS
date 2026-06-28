@@ -20,13 +20,13 @@ resources:
 images:
   - name: PROJECT/TODO_APP
     newName: kevinjohn971/todo-app
-    newTag: "4.5"
+    newTag: "4.8"
   - name: PROJECT/TODO_BACKEND
     newName: kevinjohn971/todo-backend
-    newTag: "4.6"
+    newTag: "4.8"
   - name: PROJECT/WIKIPEDIA_TODO_CRON
     newName: kevinjohn971/wikipedia-todo-cron
-    newTag: "3.5"
+    newTag: "4.8"
   - name: PROJECT/BROADCASTER
     newName: kevinjohn971/broadcaster
-    newTag: "4.6"
+    newTag: "4.8"
