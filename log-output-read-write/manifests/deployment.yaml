@@ -24,13 +24,13 @@ spec:
                 path: information.txt
       containers:
         - name: log-output-writer
-          image: kevinjohn971/log-output-writer:2.1
+          image: PROJECT/LOG_OUTPUT_WRITER
           volumeMounts:
             - name: shared-log
               mountPath: /usr/src/app/files
 
         - name: log-output-reader
-          image: kevinjohn971/log-output-reader:4.1
+          image: PROJECT/LOG_OUTPUT_READER
           env:
             - name: PORT
               value: "3000"

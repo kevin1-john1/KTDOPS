@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: exercises
+
+resources:
+  - manifests/configmap.yaml
+  - manifests/deployment.yaml
+  - manifests/service.yaml
+
+images:
+  - name: PROJECT/LOG_OUTPUT_WRITER
+    newName: kevinjohn971/log-output-writer
+    newTag: "4.7"
+  - name: PROJECT/LOG_OUTPUT_READER
+    newName: kevinjohn971/log-output-reader
+    newTag: "4.7"
