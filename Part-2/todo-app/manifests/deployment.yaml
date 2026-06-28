@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-app
+  template:
+    metadata:
+      labels:
+        app: todo-app
+    spec:
+      volumes:
+        - name: project-data
+          persistentVolumeClaim:
+            claimName: project-claim
+      containers:
+        - name: todo-app
+          image: kevinjohn971/todo-app:2.2
+          env:
+            - name: PORT
+              value: "3000"
+            - name: TODO_BACKEND_URL
+              value: "http://todo-backend-svc:2345"
+          volumeMounts:
+            - name: project-data
+              mountPath: /usr/src/app/files

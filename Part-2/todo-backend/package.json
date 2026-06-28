@@ -1,0 +1,9 @@
+{
+  "name": "todo-backend",
+  "version": "1.0.0",
+  "description": "Todo backend service for DevOps with Kubernetes",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
