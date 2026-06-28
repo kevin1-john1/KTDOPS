@@ -1,6 +1,5 @@
 const http = require("http");
 const fs = require("fs");
-const path = require("path");
 
 const PORT = process.env.PORT;
 const TODO_BACKEND_URL = process.env.TODO_BACKEND_URL;
@@ -94,6 +93,14 @@ const ensureImage = async () => {
   }
 };
 
+const backendIsHealthy = async () => {
+  const response = await fetch(`${TODO_BACKEND_URL}/healthz`);
+
+  if (!response.ok) {
+    throw new Error(`Backend unhealthy: ${response.status}`);
+  }
+};
+
 const getTodos = async () => {
   const response = await fetch(`${TODO_BACKEND_URL}/todos`);
 
@@ -117,6 +124,68 @@ const createTodo = async (content) => {
     const errorBody = await response.text();
     throw new Error(errorBody);
   }
+};
+
+const updateTodoDone = async (id, done) => {
+  const response = await fetch(`${TODO_BACKEND_URL}/todos/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ done })
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(errorBody);
+  }
+
+  return response.json();
+};
+
+const breakBackend = async () => {
+  const response = await fetch(`${TODO_BACKEND_URL}/break`, {
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Break request failed with status ${response.status}`);
+  }
+};
+
+const escapeHtml = (value) =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const renderTodo = (todo) => {
+  const id = todo.id;
+  const content = todo.content || String(todo);
+  const done = Boolean(todo.done);
+
+  return `
+    <li style="margin-bottom: 8px;">
+      <span style="${done ? "text-decoration: line-through; color: gray;" : ""}">
+        ${escapeHtml(content)}
+      </span>
+      ${
+        id
+          ? `
+            <button
+              type="button"
+              onclick="markDone(${id}, ${done ? "false" : "true"})"
+              style="margin-left: 8px;"
+            >
+              ${done ? "Undo" : "Mark done"}
+            </button>
+          `
+          : ""
+      }
+    </li>
+  `;
 };
 
 const renderHtml = (todos, errorMessage = "") => `
@@ -145,10 +214,18 @@ const renderHtml = (todos, errorMessage = "") => `
 
       button {
         padding: 8px 12px;
+        cursor: pointer;
       }
 
       .error {
         color: red;
+      }
+
+      .break-button {
+        margin-top: 24px;
+        background: #d9534f;
+        color: white;
+        border: none;
       }
     </style>
   </head>
@@ -168,32 +245,50 @@ const renderHtml = (todos, errorMessage = "") => `
       <button type="submit">Send</button>
     </form>
 
-    <form action="/break" method="post" style="margin-top: 24px;">
-      <button type="submit">Break app</button>
-    </form>
-
-    ${errorMessage ? `<p class="error">${errorMessage}</p>` : ""}
+    ${errorMessage ? `<p class="error">${escapeHtml(errorMessage)}</p>` : ""}
 
     <h2>Todos</h2>
     <ul>
-      ${todos.map((todo) => `<li>${todo}</li>`).join("")}
+      ${todos.map(renderTodo).join("")}
     </ul>
+
+    <form action="/break" method="post">
+      <button class="break-button" type="submit">Break app</button>
+    </form>
+
+    <script>
+      async function markDone(id, done) {
+        await fetch('/todos/' + id, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ done: done })
+        });
+
+        window.location.reload();
+      }
+    </script>
   </body>
 </html>
 `;
 
-const breakBackend = async () => {
-  const response = await fetch(`${TODO_BACKEND_URL}/break`, {
-    method: "POST"
-  });
-
-  if (!response.ok) {
-    throw new Error(`Break request failed with status ${response.status}`);
-  }
-};
-
 const server = http.createServer(async (req, res) => {
   try {
+    if (req.method === "GET" && req.url === "/healthz") {
+      try {
+        await backendIsHealthy();
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "ok" }));
+      } catch (error) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "unhealthy", error: error.message }));
+      }
+
+      return;
+    }
+
     if (req.method === "GET" && req.url === "/") {
       await ensureImage();
 
@@ -222,6 +317,30 @@ const server = http.createServer(async (req, res) => {
 
       res.writeHead(303, { Location: "/" });
       res.end();
+      return;
+    }
+
+    const todoIdMatch = req.url.match(/^\/todos\/(\d+)$/);
+
+    if (req.method === "PUT" && todoIdMatch) {
+      const id = Number(todoIdMatch[1]);
+      const body = await readRequestBody(req);
+
+      let done = true;
+
+      if (body) {
+        try {
+          const parsed = JSON.parse(body);
+          done = typeof parsed.done === "boolean" ? parsed.done : true;
+        } catch {
+          done = true;
+        }
+      }
+
+      const updatedTodo = await updateTodoDone(id, done);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(updatedTodo));
       return;
     }
 

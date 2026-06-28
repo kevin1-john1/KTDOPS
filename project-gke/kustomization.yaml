@@ -18,10 +18,10 @@ resources:
 images:
   - name: PROJECT/TODO_APP
     newName: kevinjohn971/todo-app
-    newTag: "3.5"
+    newTag: "4.5"
   - name: PROJECT/TODO_BACKEND
     newName: kevinjohn971/todo-backend
-    newTag: "3.5"
+    newTag: "4.5"
   - name: PROJECT/WIKIPEDIA_TODO_CRON
     newName: kevinjohn971/wikipedia-todo-cron
     newTag: "3.5"

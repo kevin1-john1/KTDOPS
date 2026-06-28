@@ -17,6 +17,8 @@ const pool = new Pool({
   connectionString: DATABASE_URL
 });
 
+let isHealthy = true;
+
 const log = (event, data = {}) => {
   console.log(
     JSON.stringify({
@@ -47,8 +49,14 @@ const initializeDatabase = async () => {
         CREATE TABLE IF NOT EXISTS todos (
           id SERIAL PRIMARY KEY,
           content TEXT NOT NULL,
+          done BOOLEAN NOT NULL DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+
+      await pool.query(`
+        ALTER TABLE todos
+        ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT FALSE
       `);
 
       const countResult = await pool.query("SELECT COUNT(*) FROM todos");
@@ -58,7 +66,10 @@ const initializeDatabase = async () => {
         const initialTodos = parseInitialTodos();
 
         for (const todo of initialTodos) {
-          await pool.query("INSERT INTO todos (content) VALUES ($1)", [todo]);
+          await pool.query(
+            "INSERT INTO todos (content, done) VALUES ($1, false)",
+            [todo]
+          );
         }
       }
 
@@ -80,6 +91,18 @@ const initializeDatabase = async () => {
 
 const initialized = initializeDatabase();
 
+const databaseIsReady = async () => {
+  await pool.query("SELECT 1");
+};
+
+const healthCheck = async () => {
+  if (!isHealthy) {
+    throw new Error("Application was manually broken");
+  }
+
+  await databaseIsReady();
+};
+
 const readRequestBody = (req) =>
   new Promise((resolve, reject) => {
     let body = "";
@@ -97,25 +120,6 @@ const sendJson = (res, statusCode, data) => {
   res.end(JSON.stringify(data));
 };
 
-const getTodos = async () => {
-  const result = await pool.query(`
-    SELECT id, content
-    FROM todos
-    ORDER BY id ASC
-  `);
-
-  return result.rows;
-};
-
-const createTodo = async (content) => {
-  const result = await pool.query(
-    "INSERT INTO todos (content) VALUES ($1) RETURNING id, content",
-    [content]
-  );
-
-  return result.rows[0];
-};
-
 const parseTodoContent = (body) => {
   try {
     const parsed = JSON.parse(body);
@@ -126,18 +130,57 @@ const parseTodoContent = (body) => {
   }
 };
 
-let isHealthy = true;
-
-const databaseIsReady = async () => {
-  await pool.query("SELECT 1");
-};
-
-const healthCheck = async () => {
-  if (!isHealthy) {
-    throw new Error("Application was manually broken");
+const parseDoneValue = (body) => {
+  if (!body) {
+    return true;
   }
 
-  await databaseIsReady();
+  try {
+    const parsed = JSON.parse(body);
+
+    if (typeof parsed.done === "boolean") {
+      return parsed.done;
+    }
+
+    return true;
+  } catch {
+    const params = new URLSearchParams(body);
+    const done = params.get("done");
+
+    if (done === "false") {
+      return false;
+    }
+
+    return true;
+  }
+};
+
+const getTodos = async () => {
+  const result = await pool.query(`
+    SELECT id, content, done
+    FROM todos
+    ORDER BY id ASC
+  `);
+
+  return result.rows;
+};
+
+const createTodo = async (content) => {
+  const result = await pool.query(
+    "INSERT INTO todos (content, done) VALUES ($1, false) RETURNING id, content, done",
+    [content]
+  );
+
+  return result.rows[0];
+};
+
+const updateTodoDone = async (id, done) => {
+  const result = await pool.query(
+    "UPDATE todos SET done = $1 WHERE id = $2 RETURNING id, content, done",
+    [done, id]
+  );
+
+  return result.rows[0];
 };
 
 const server = http.createServer(async (req, res) => {
@@ -147,10 +190,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/healthz") {
       try {
         await healthCheck();
-
         sendJson(res, 200, { status: "ok" });
       } catch (error) {
-        sendJson(res, 500, { status: "unhealthy", error: error.message });
+        sendJson(res, 500, {
+          status: "unhealthy",
+          error: error.message
+        });
       }
 
       return;
@@ -217,10 +262,36 @@ const server = http.createServer(async (req, res) => {
       log("todo_created", {
         id: todo.id,
         content: todo.content,
+        done: todo.done,
         length: todo.content.length
       });
 
       sendJson(res, 201, todo);
+      return;
+    }
+
+    const todoIdMatch = req.url.match(/^\/todos\/(\d+)$/);
+
+    if (req.method === "PUT" && todoIdMatch) {
+      const id = Number(todoIdMatch[1]);
+      const body = await readRequestBody(req);
+      const done = parseDoneValue(body);
+
+      const todo = await updateTodoDone(id, done);
+
+      if (!todo) {
+        log("todo_update_failed_not_found", { id });
+        sendJson(res, 404, { error: "Todo not found" });
+        return;
+      }
+
+      log("todo_updated", {
+        id: todo.id,
+        content: todo.content,
+        done: todo.done
+      });
+
+      sendJson(res, 200, todo);
       return;
     }
 
