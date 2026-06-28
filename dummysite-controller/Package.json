@@ -1,0 +1,12 @@
+{
+  "name": "dummysite-controller",
+  "version": "1.0.0",
+  "description": "DummySite Kubernetes controller for DevOps with Kubernetes",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "^1.4.0"
+  }
+}
