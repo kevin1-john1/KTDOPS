@@ -16,4 +16,11 @@ spec:
                   value: "http://todo-backend-svc:2345"
                 - name: WIKIPEDIA_RANDOM_URL
                   value: "https://en.wikipedia.org/wiki/Special:Random"
+                            resources:
+              requests:
+                cpu: "20m"
+                memory: "64Mi"
+              limits:
+                cpu: "100m"
+                memory: "128Mi"
           restartPolicy: OnFailure
