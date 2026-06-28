@@ -1,0 +1,84 @@
+name: Deploy project to GKE
+
+on:
+  push:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b
+  REGISTRY: europe-north1-docker.pkg.dev
+  REPOSITORY: dwk
+  BRANCH: ${{ github.ref_name }}
+
+jobs:
+  build-publish-deploy:
+    name: Build, publish and deploy project
+    runs-on: ubuntu-latest
+    environment: GKE_PROJECT
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: "${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}"
+          service_account: "${{ secrets.SERVICE_ACCOUNT }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: "${{ env.GKE_CLUSTER }}"
+          project_id: "${{ env.PROJECT_ID }}"
+          location: "${{ env.GKE_ZONE }}"
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud --quiet auth configure-docker "$REGISTRY"
+
+      - name: Form image names
+        run: |
+          echo "TODO_APP_IMAGE=$REGISTRY/$PROJECT_ID/$REPOSITORY/todo-app:$BRANCH-$GITHUB_SHA" >> $GITHUB_ENV
+          echo "TODO_BACKEND_IMAGE=$REGISTRY/$PROJECT_ID/$REPOSITORY/todo-backend:$BRANCH-$GITHUB_SHA" >> $GITHUB_ENV
+          echo "WIKI_CRON_IMAGE=$REGISTRY/$PROJECT_ID/$REPOSITORY/wikipedia-todo-cron:$BRANCH-$GITHUB_SHA" >> $GITHUB_ENV
+
+      - name: Build images
+        run: |
+          docker build -t "$TODO_APP_IMAGE" ./todo-app
+          docker build -t "$TODO_BACKEND_IMAGE" ./todo-backend
+          docker build -t "$WIKI_CRON_IMAGE" ./wikipedia-todo-cron
+
+      - name: Push images
+        run: |
+          docker push "$TODO_APP_IMAGE"
+          docker push "$TODO_BACKEND_IMAGE"
+          docker push "$WIKI_CRON_IMAGE"
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Deploy to GKE
+        run: |
+          kubectl create namespace project --dry-run=client -o yaml | kubectl apply -f -
+
+          cd project-gke
+
+          kustomize edit set namespace project
+          kustomize edit set image PROJECT/TODO_APP="$TODO_APP_IMAGE"
+          kustomize edit set image PROJECT/TODO_BACKEND="$TODO_BACKEND_IMAGE"
+          kustomize edit set image PROJECT/WIKIPEDIA_TODO_CRON="$WIKI_CRON_IMAGE"
+
+          kustomize build . | kubectl apply -f -
+
+          kubectl rollout status deployment/todo-app-dep -n project
+          kubectl rollout status deployment/todo-backend-dep -n project
+          kubectl rollout status statefulset/todo-postgres-stset -n project
+          kubectl get services -n project -o wide
