@@ -39,7 +39,10 @@
 * [3.6 Project GitHub Actions deployment pipeline](https://github.com/kevin1-john1/KTDOPS/tree/3.6)
 * [3.7 Branch-specific project environments](https://github.com/kevin1-john1/KTDOPS/tree/3.7)
 * [3.8 Delete branch environment workflow](https://github.com/kevin1-john1/KTDOPS/tree/3.8)
-
+* [3.9 DBaaS vs DIY PostgreSQL comparison](https://github.com/kevin1-john1/KTDOPS/tree/3.9)
+* [3.10 Todo database backup CronJob](https://github.com/kevin1-john1/KTDOPS/tree/3.10)
+* [3.11 Project resource requests and limits](https://github.com/kevin1-john1/KTDOPS/tree/3.11)
+* [3.12 GKE todo creation logs](https://github.com/kevin1-john1/KTDOPS/tree/3.12)
 
 ## Exercise 3.9: DBaaS vs DIY PostgreSQL
 
