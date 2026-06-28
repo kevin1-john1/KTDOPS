@@ -4,10 +4,10 @@ const NATS_URL = process.env.NATS_URL || "nats://my-nats.nats.svc.cluster.local:
 const TODO_EVENTS_SUBJECT = process.env.TODO_EVENTS_SUBJECT || "todo.events";
 const BROADCASTER_QUEUE_GROUP =
   process.env.BROADCASTER_QUEUE_GROUP || "todo-broadcasters";
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const WEBHOOK_URL = process.env.WEBHOOK_URL || "";
 const WEBHOOK_MODE = process.env.WEBHOOK_MODE || "generic";
 
-if (!WEBHOOK_URL) {
+if (WEBHOOK_MODE !== "log" && !WEBHOOK_URL) {
   throw new Error("Missing required configuration: WEBHOOK_URL");
 }
 
@@ -44,6 +44,11 @@ const buildPayload = (message) => {
 };
 
 const sendWebhook = async (message) => {
+  if (WEBHOOK_MODE === "log") {
+    log("external_message_logged_only", { message });
+    return;
+  }
+
   const payload = buildPayload(message);
 
   const response = await fetch(WEBHOOK_URL, {

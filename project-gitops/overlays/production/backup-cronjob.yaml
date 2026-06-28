@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: todo-db-backup
+  namespace: project
+spec:
+  schedule: "0 0 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: todo-db-backup
+              image: kevinjohn971/todo-db-backup:3.10
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: todo-db-secret
+                      key: DATABASE_URL
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "250m"
+                  memory: "256Mi"
+                - name: BUCKET_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: todo-backup-config
+                      key: BUCKET_NAME
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /var/secrets/google/key.json
+              volumeMounts:
+                - name: storage-sa-key
+                  mountPath: /var/secrets/google
+                  readOnly: true
+          volumes:
+            - name: storage-sa-key
+              secret:
+                secretName: storage-sa-key

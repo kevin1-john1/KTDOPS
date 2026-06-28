@@ -1,0 +1,77 @@
+name: GitOps release project environments
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-publish-release:
+    name: Build, publish and update environment manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and publish images
+        run: |
+          docker build -t "$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG" ./todo-app
+          docker build -t "$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG" ./todo-backend
+          docker build -t "$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG" ./wikipedia-todo-cron
+          docker build -t "$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG" ./broadcaster
+
+          docker push "$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG"
+          docker push "$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG"
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Select target overlay
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "TARGET_OVERLAY=project-gitops/overlays/production" >> "$GITHUB_ENV"
+            echo "RELEASE_KIND=production" >> "$GITHUB_ENV"
+          else
+            echo "TARGET_OVERLAY=project-gitops/overlays/staging" >> "$GITHUB_ENV"
+            echo "RELEASE_KIND=staging" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout main before committing manifest change
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Update Kustomize images
+        working-directory: ${{ env.TARGET_OVERLAY }}
+        run: |
+          kustomize edit set image PROJECT/TODO_APP="$DOCKERHUB_USERNAME/todo-app:$IMAGE_TAG"
+          kustomize edit set image PROJECT/TODO_BACKEND="$DOCKERHUB_USERNAME/todo-backend:$IMAGE_TAG"
+          kustomize edit set image PROJECT/WIKIPEDIA_TODO_CRON="$DOCKERHUB_USERNAME/wikipedia-todo-cron:$IMAGE_TAG"
+          kustomize edit set image PROJECT/BROADCASTER="$DOCKERHUB_USERNAME/broadcaster:$IMAGE_TAG"
+
+      - name: Commit updated environment image tags
+        uses: EndBug/add-and-commit@v10
+        with:
+          add: "${{ env.TARGET_OVERLAY }}/kustomization.yaml"
+          message: "Release ${{ env.RELEASE_KIND }} ${{ github.sha }}"
+          default_author: github_actions

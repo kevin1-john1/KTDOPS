@@ -1,0 +1,7 @@
+env:
+  - name: WEBHOOK_URL
+    valueFrom:
+      secretKeyRef:
+        name: broadcaster-secret
+        key: WEBHOOK_URL
+        optional: true
