@@ -105,3 +105,11 @@ DIY PostgreSQL needs a custom backup process. In this project, that means creati
 ### Conclusion
 
 For a real production application, I would prefer Cloud SQL because it reduces maintenance work and provides managed backups, restore features, and reliability options. For this course project, DIY PostgreSQL on GKE is acceptable because it is cheaper, easier to keep inside Kubernetes manifests, and useful for learning StatefulSets, PersistentVolumeClaims, Secrets, CronJobs, and backups.
+
+
+## Exercise 4.3: Prometheus query
+
+Query used to show the number of Pods created by StatefulSets in the monitoring namespace:
+
+```promql
+count(kube_pod_info{namespace="monitoring",created_by_kind="StatefulSet"})
