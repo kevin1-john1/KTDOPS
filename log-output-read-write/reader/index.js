@@ -2,7 +2,10 @@ const http = require("http");
 const fs = require("fs");
 
 const PORT = process.env.PORT || 3000;
-const LOG_FILE_PATH = "/usr/src/app/files/output.txt";
+const LOG_FILE_PATH = process.env.LOG_FILE_PATH || "/usr/src/app/files/output.txt";
+const INFORMATION_FILE_PATH =
+  process.env.INFORMATION_FILE_PATH || "/usr/src/app/config/information.txt";
+const MESSAGE = process.env.MESSAGE || "";
 const PING_PONG_URL = process.env.PING_PONG_URL || "http://ping-pong-svc:2345/pings";
 
 const getPingPongs = async () => {
@@ -20,16 +23,35 @@ const getPingPongs = async () => {
   }
 };
 
+const readFileContent = (filePath, fallback) => {
+  if (!fs.existsSync(filePath)) {
+    return fallback;
+  }
+
+  return fs.readFileSync(filePath, "utf8").trim();
+};
+
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/") {
-    const logOutput = fs.existsSync(LOG_FILE_PATH)
-      ? fs.readFileSync(LOG_FILE_PATH, "utf8")
-      : "Log output not available yet";
+    const information = readFileContent(
+      INFORMATION_FILE_PATH,
+      "information.txt not available"
+    );
+
+    const logOutput = readFileContent(
+      LOG_FILE_PATH,
+      "Log output not available yet"
+    );
 
     const pingPongs = await getPingPongs();
 
     res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end(`${logOutput}.\nPing / Pongs: ${pingPongs}\n`);
+    res.end(
+      `file content: ${information}\n` +
+        `env variable: MESSAGE=${MESSAGE}\n` +
+        `${logOutput}.\n` +
+        `Ping / Pongs: ${pingPongs}\n`
+    );
     return;
   }
 

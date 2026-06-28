@@ -16,6 +16,12 @@ spec:
       volumes:
         - name: shared-log
           emptyDir: {}
+        - name: log-output-config-volume
+          configMap:
+            name: log-output-config
+            items:
+              - key: information.txt
+                path: information.txt
       containers:
         - name: log-output-writer
           image: kevinjohn971/log-output-writer:2.1
@@ -24,12 +30,24 @@ spec:
               mountPath: /usr/src/app/files
 
         - name: log-output-reader
-          image: kevinjohn971/log-output-reader:2.1
+          image: kevinjohn971/log-output-reader:2.5
           env:
             - name: PORT
               value: "3000"
+            - name: LOG_FILE_PATH
+              value: "/usr/src/app/files/output.txt"
+            - name: INFORMATION_FILE_PATH
+              value: "/usr/src/app/config/information.txt"
             - name: PING_PONG_URL
               value: "http://ping-pong-svc:2345/pings"
+            - name: MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: log-output-config
+                  key: MESSAGE
           volumeMounts:
             - name: shared-log
               mountPath: /usr/src/app/files
+            - name: log-output-config-volume
+              mountPath: /usr/src/app/config
+              readOnly: true
