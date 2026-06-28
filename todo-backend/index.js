@@ -1,12 +1,19 @@
 const http = require("http");
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
+const INITIAL_TODOS = process.env.INITIAL_TODOS;
 
-const todos = [
-  "Learn Kubernetes basics",
-  "Create a todo app",
-  "Add backend service"
-];
+if (!PORT) {
+  throw new Error("Missing required configuration: PORT");
+}
+
+let todos = [];
+
+try {
+  todos = INITIAL_TODOS ? JSON.parse(INITIAL_TODOS) : [];
+} catch {
+  todos = [];
+}
 
 const readRequestBody = (req) =>
   new Promise((resolve, reject) => {

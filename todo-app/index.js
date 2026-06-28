@@ -2,13 +2,29 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = process.env.PORT || 3000;
-const TODO_BACKEND_URL = process.env.TODO_BACKEND_URL || "http://todo-backend-svc:2345";
+const PORT = process.env.PORT;
+const TODO_BACKEND_URL = process.env.TODO_BACKEND_URL;
+const IMAGE_URL = process.env.IMAGE_URL;
+const CACHE_DIR = process.env.CACHE_DIR;
+const IMAGE_PATH = process.env.IMAGE_PATH;
+const META_PATH = process.env.META_PATH;
+const IMAGE_CACHE_MS = Number(process.env.IMAGE_CACHE_MS);
 
-const CACHE_DIR = "/usr/src/app/files";
-const IMAGE_PATH = path.join(CACHE_DIR, "image.jpg");
-const META_PATH = path.join(CACHE_DIR, "image-meta.json");
-const TEN_MINUTES = 10 * 60 * 1000;
+const requiredConfig = {
+  PORT,
+  TODO_BACKEND_URL,
+  IMAGE_URL,
+  CACHE_DIR,
+  IMAGE_PATH,
+  META_PATH,
+  IMAGE_CACHE_MS
+};
+
+for (const [key, value] of Object.entries(requiredConfig)) {
+  if (!value) {
+    throw new Error(`Missing required configuration: ${key}`);
+  }
+}
 
 fs.mkdirSync(CACHE_DIR, { recursive: true });
 
@@ -43,11 +59,11 @@ const imageIsFresh = () => {
     return false;
   }
 
-  return Date.now() - meta.createdAt < TEN_MINUTES;
+  return Date.now() - meta.createdAt < IMAGE_CACHE_MS;
 };
 
 const downloadImage = async () => {
-  const response = await fetch("https://picsum.photos/1200");
+  const response = await fetch(IMAGE_URL);
 
   if (!response.ok) {
     throw new Error(`Image download failed with status ${response.status}`);
@@ -59,7 +75,7 @@ const downloadImage = async () => {
   fs.writeFileSync(IMAGE_PATH, buffer);
   fs.writeFileSync(META_PATH, JSON.stringify({ createdAt: Date.now() }));
 
-  console.log("Downloaded new image from Lorem Picsum");
+  console.log("Downloaded new image");
 };
 
 const ensureImage = async () => {

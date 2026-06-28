@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-backend-config
+  namespace: project
+data:
+  PORT: "3000"
+  INITIAL_TODOS: '["Learn Kubernetes basics","Create a todo app","Add backend service"]'
