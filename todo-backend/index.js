@@ -1,9 +1,12 @@
 const http = require("http");
 const { Pool } = require("pg");
+const { connect, StringCodec } = require("nats");
 
 const PORT = process.env.PORT;
 const DATABASE_URL = process.env.DATABASE_URL;
 const INITIAL_TODOS = process.env.INITIAL_TODOS;
+const NATS_URL = process.env.NATS_URL || "nats://my-nats.nats.svc.cluster.local:4222";
+const TODO_EVENTS_SUBJECT = process.env.TODO_EVENTS_SUBJECT || "todo.events";
 
 if (!PORT) {
   throw new Error("Missing required configuration: PORT");
@@ -17,7 +20,10 @@ const pool = new Pool({
   connectionString: DATABASE_URL
 });
 
+const stringCodec = StringCodec();
+
 let isHealthy = true;
+let natsConnection = null;
 
 const log = (event, data = {}) => {
   console.log(
@@ -31,6 +37,77 @@ const log = (event, data = {}) => {
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const connectToNats = async () => {
+  const maxAttempts = 30;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      natsConnection = await connect({
+        servers: NATS_URL,
+        name: "todo-backend"
+      });
+
+      log("nats_connected", {
+        url: NATS_URL
+      });
+
+      return;
+    } catch (error) {
+      log("nats_connection_failed", {
+        attempt,
+        maxAttempts,
+        error: error.message
+      });
+
+      await sleep(2000);
+    }
+  }
+
+  log("nats_unavailable_after_retries");
+};
+
+const publishTodoEvent = async (eventType, todo) => {
+  if (!natsConnection) {
+    log("todo_event_not_published_nats_unavailable", {
+      eventType,
+      todo
+    });
+
+    return;
+  }
+
+  const message =
+    eventType === "todo_created"
+      ? `A todo was created: ${todo.content}`
+      : `A todo was updated: ${todo.content} (${todo.done ? "done" : "not done"})`;
+
+  const payload = {
+    eventType,
+    todo,
+    message,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    natsConnection.publish(
+      TODO_EVENTS_SUBJECT,
+      stringCodec.encode(JSON.stringify(payload))
+    );
+
+    log("todo_event_published", {
+      subject: TODO_EVENTS_SUBJECT,
+      eventType,
+      todoId: todo.id
+    });
+  } catch (error) {
+    log("todo_event_publish_failed", {
+      eventType,
+      todoId: todo.id,
+      error: error.message
+    });
+  }
+};
 
 const parseInitialTodos = () => {
   try {
@@ -89,7 +166,7 @@ const initializeDatabase = async () => {
   throw new Error("Could not initialize todo database");
 };
 
-const initialized = initializeDatabase();
+const initialized = Promise.all([initializeDatabase(), connectToNats()]);
 
 const databaseIsReady = async () => {
   await pool.query("SELECT 1");
@@ -266,6 +343,8 @@ const server = http.createServer(async (req, res) => {
         length: todo.content.length
       });
 
+      await publishTodoEvent("todo_created", todo);
+
       sendJson(res, 201, todo);
       return;
     }
@@ -291,6 +370,8 @@ const server = http.createServer(async (req, res) => {
         done: todo.done
       });
 
+      await publishTodoEvent("todo_updated", todo);
+
       sendJson(res, 200, todo);
       return;
     }
@@ -311,4 +392,13 @@ server.listen(PORT, () => {
   log("server_started", {
     port: PORT
   });
+});
+
+process.on("SIGTERM", async () => {
+  if (natsConnection) {
+    await natsConnection.drain();
+  }
+
+  await pool.end();
+  process.exit(0);
 });

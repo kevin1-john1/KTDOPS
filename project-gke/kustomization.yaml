@@ -14,6 +14,8 @@ resources:
   - todo-postgres-secret.yaml
   - todo-postgres-statefulset.yaml
   - wikipedia-cronjob.yaml
+  - ../broadcaster/manifests/configmap.yaml
+  - ../broadcaster/manifests/deployment.yaml
 
 images:
   - name: PROJECT/TODO_APP
@@ -21,7 +23,10 @@ images:
     newTag: "4.5"
   - name: PROJECT/TODO_BACKEND
     newName: kevinjohn971/todo-backend
-    newTag: "4.5"
+    newTag: "4.6"
   - name: PROJECT/WIKIPEDIA_TODO_CRON
     newName: kevinjohn971/wikipedia-todo-cron
     newTag: "3.5"
+  - name: PROJECT/BROADCASTER
+    newName: kevinjohn971/broadcaster
+    newTag: "4.6"
