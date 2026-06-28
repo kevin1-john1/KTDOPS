@@ -2,18 +2,21 @@ const http = require("http");
 const fs = require("fs");
 
 const PORT = process.env.PORT || 3000;
-const FILE_PATH = "/usr/src/app/files/output.txt";
+const LOG_FILE_PATH = "/usr/src/app/files/output.txt";
+const PINGPONG_FILE_PATH = "/usr/src/app/files/pingpong.txt";
 
 const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/") {
-    let output = "Log output not available yet";
+    const logOutput = fs.existsSync(LOG_FILE_PATH)
+      ? fs.readFileSync(LOG_FILE_PATH, "utf8")
+      : "Log output not available yet";
 
-    if (fs.existsSync(FILE_PATH)) {
-      output = fs.readFileSync(FILE_PATH, "utf8");
-    }
+    const pingPongs = fs.existsSync(PINGPONG_FILE_PATH)
+      ? fs.readFileSync(PINGPONG_FILE_PATH, "utf8")
+      : "0";
 
     res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end(`${output}\n`);
+    res.end(`${logOutput}.\nPing / Pongs: ${pingPongs}\n`);
     return;
   }
 
