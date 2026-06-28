@@ -1,5 +1,9 @@
 # DevOps with Kubernetes submissions
 
+## Main submission repository
+
+https://github.com/kevin1-john1/KTDOPS
+
 ## Chapter 2
 
 * [1.1 Log output](https://github.com/kevin1-john1/KTDOPS/tree/1.1/log-output)
@@ -56,6 +60,18 @@
 * [4.8 Project GitOps](https://github.com/kevin1-john1/KTDOPS/tree/4.8)
 * [4.9 Project staging and production GitOps environments](https://github.com/kevin1-john1/KTDOPS/tree/4.9)
 * [4.10 Project with separated GitOps configuration](https://github.com/kevin1-john1/KTDOPS/tree/4.10)
+
+## Chapter 6
+
+* [5.1 DummySite CRD and Controller](https://github.com/kevin1-john1/KTDOPS/tree/5.1)
+* [5.2 Istio service mesh setup](https://github.com/kevin1-john1/KTDOPS/tree/5.2)
+* [5.3 Log app Service Mesh Edition](https://github.com/kevin1-john1/KTDOPS/tree/5.3)
+* [5.4 Wikipedia with init and sidecar containers](https://github.com/kevin1-john1/KTDOPS/tree/5.4)
+* [5.5 Platform comparison](https://github.com/kevin1-john1/KTDOPS/tree/5.5)
+* [5.6 Trying serverless with Knative](https://github.com/kevin1-john1/KTDOPS/tree/5.6)
+* [5.7 Ping-pong serverless](https://github.com/kevin1-john1/KTDOPS/tree/5.7)
+* [5.8 CNCF Landscape](https://github.com/kevin1-john1/KTDOPS/tree/5.8)
+* [5.9 The end](https://github.com/kevin1-john1/KTDOPS/tree/5.9)
 
 ## Exercise 3.9: DBaaS vs DIY PostgreSQL
 
@@ -138,3 +154,80 @@ For this exercise, the project uses the same GitHub repository but separates app
 * Argo CD then pulls the updated desired state from Git and syncs it to the cluster.
 
 This keeps the GitOps flow working while avoiding a second repository.
+
+## Exercise 5.2: Istio service mesh
+
+Istio ambient mode was installed into the k3d cluster. The default namespace was added to the mesh using `istio.io/dataplane-mode=ambient`, and a waypoint proxy was created for Layer 7 routing. Prometheus and Kiali were installed to visualize traffic.
+
+## Exercise 5.5: Platform comparison
+
+### Rancher vs OpenShift
+
+I chose Rancher as the better option for this comparison.
+
+#### Rancher
+
+* Rancher is better when the organization wants to manage many Kubernetes clusters from one place.
+* Rancher supports different Kubernetes distributions and environments, such as cloud clusters and on-premise clusters.
+* Rancher works well with lightweight Kubernetes distributions such as K3s and RKE2.
+* Rancher is a good choice when the team already has Kubernetes knowledge and wants more freedom in choosing the underlying Kubernetes distribution.
+* Rancher has a strong focus on multi-cluster management, centralized access, monitoring, policy management, and cluster operations.
+
+#### OpenShift
+
+* OpenShift is a complete enterprise Kubernetes application platform from Red Hat.
+* OpenShift gives a more opinionated platform with many built-in developer and operations tools.
+* OpenShift can be easier for large enterprises that want a complete supported platform with integrated security, CI/CD, registry, operators, and developer workflows.
+* OpenShift is usually heavier and more opinionated than Rancher.
+* OpenShift can create more vendor lock-in because it is tightly integrated with the Red Hat ecosystem.
+
+#### Decision
+
+I choose Rancher as the better option because it gives more flexibility and is better suited for managing different Kubernetes clusters across different environments. OpenShift is powerful, but Rancher feels more suitable when the main goal is multi-cluster Kubernetes management without forcing the team into one complete platform stack.
+
+## Exercise 5.6: Trying serverless with Knative
+
+Knative Serving was installed into a k3d cluster without Traefik. Kourier was used as the networking layer and Magic DNS with `sslip.io` was enabled. I deployed the official Knative hello service, tested it using the Host header through `localhost:8081`, verified autoscaling behavior, and tested traffic splitting between two revisions.
+
+## Exercise 5.7: Ping-pong serverless
+
+The Ping-pong application was moved to Knative Serving as a `Service` named `pingpong` in the `exercises` namespace. Log Output calls it through the fully qualified Kubernetes service DNS name:
+
+`http://pingpong.exercises.svc.cluster.local/pings`
+
+The Knative Service can scale down to zero when idle and scale back up when traffic arrives.
+
+## Exercise 5.8: CNCF Landscape
+
+The marked CNCF Landscape image is saved here:
+
+![CNCF Landscape marked](docs/images/5.8-cncf-landscape.png)
+
+### Directly used products/projects
+
+* Kubernetes — used as the main container orchestration platform throughout the course.
+* Helm — used to install Prometheus, Grafana, NATS, and other components.
+* Prometheus — used for monitoring and queries.
+* Grafana — used for visualization of logs and metrics.
+* Argo — used through Argo CD for GitOps and Argo Rollouts for canary releases.
+* NATS — used as the messaging system for the broadcaster exercise.
+* Istio — used as the service mesh.
+* Knative — used for serverless workloads.
+* CoreDNS — used as the cluster DNS service.
+* Traefik — used as the default k3s/k3d ingress controller in earlier parts.
+* containerd — used as part of the Kubernetes runtime stack.
+* K3s — used through k3d as the local Kubernetes distribution.
+
+### Indirectly used products/projects
+
+* Flannel — indirectly used by k3s/k3d as the default networking layer.
+* Envoy — indirectly used by Istio/service mesh networking.
+* etcd — studied as part of Kubernetes internals and used by many Kubernetes control plane setups.
+
+## Exercise 5.9: The end
+
+Main submission repository:
+
+https://github.com/kevin1-john1/KTDOPS
+
+This repository contains my DevOps with Kubernetes course submissions with exercise-specific tags and links.
