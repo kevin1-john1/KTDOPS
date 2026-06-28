@@ -53,6 +53,10 @@ const initializeDatabase = async () => {
 
 const initialized = initializeDatabase();
 
+const databaseIsReady = async () => {
+  await pool.query("SELECT 1");
+};
+
 const getCounter = async () => {
   const result = await pool.query(
     "SELECT value FROM ping_pong_counter WHERE id = 1"
@@ -72,15 +76,28 @@ const incrementAndReturnPrevious = async () => {
   return result.rows[0].previous;
 };
 
+const handlePingPong = async (res) => {
+  const previous = await incrementAndReturnPrevious();
+
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end(`pong ${previous}\n`);
+};
+
 const server = http.createServer(async (req, res) => {
   try {
+    if (req.method === "GET" && req.url === "/healthz") {
+      await initialized;
+      await databaseIsReady();
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+
     await initialized;
 
-    if (req.method === "GET" && req.url === "/") {
-      const previous = await incrementAndReturnPrevious();
-
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      res.end(`pong ${previous}\n`);
+    if (req.method === "GET" && (req.url === "/" || req.url === "/pingpong")) {
+      await handlePingPong(res);
       return;
     }
 

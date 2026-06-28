@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: log-output-dep
+  name: logoutput-dep
   namespace: exercises
 spec:
   replicas: 1
@@ -30,7 +30,7 @@ spec:
               mountPath: /usr/src/app/files
 
         - name: log-output-reader
-          image: kevinjohn971/log-output-reader:2.5
+          image: kevinjohn971/log-output-reader:4.1
           env:
             - name: PORT
               value: "3000"
@@ -45,6 +45,13 @@ spec:
                 configMapKeyRef:
                   name: log-output-config
                   key: MESSAGE
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
           volumeMounts:
             - name: shared-log
               mountPath: /usr/src/app/files
