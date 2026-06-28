@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wikipedia-todo-cron
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: wikipedia-todo-cron
+              image: PROJECT/WIKIPEDIA_TODO_CRON
+              env:
+                - name: TODO_BACKEND_URL
+                  value: "http://todo-backend-svc:2345"
+                - name: WIKIPEDIA_RANDOM_URL
+                  value: "https://en.wikipedia.org/wiki/Special:Random"
+          restartPolicy: OnFailure

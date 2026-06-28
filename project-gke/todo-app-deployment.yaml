@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-dep
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: todo-app
+  template:
+    metadata:
+      labels:
+        app: todo-app
+    spec:
+      volumes:
+        - name: project-data
+          persistentVolumeClaim:
+            claimName: project-claim
+      containers:
+        - name: todo-app
+          image: PROJECT/TODO_APP
+          envFrom:
+            - configMapRef:
+                name: todo-app-config
+          volumeMounts:
+            - name: project-data
+              mountPath: /usr/src/app/files

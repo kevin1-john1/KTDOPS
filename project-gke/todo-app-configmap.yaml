@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-app-config
+data:
+  PORT: "3000"
+  TODO_BACKEND_URL: "http://todo-backend-svc:2345"
+  IMAGE_URL: "https://picsum.photos/1200"
+  CACHE_DIR: "/usr/src/app/files"
+  IMAGE_PATH: "/usr/src/app/files/image.jpg"
+  META_PATH: "/usr/src/app/files/image-meta.json"
+  IMAGE_CACHE_MS: "600000"
