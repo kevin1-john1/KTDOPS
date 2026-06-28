@@ -1,0 +1,20 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hello-split
+  namespace: default
+spec:
+  template:
+    metadata:
+      name: hello-split-v1
+    spec:
+      containers:
+        - image: ghcr.io/knative/helloworld-go:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TARGET
+              value: "Version 1"
+  traffic:
+    - revisionName: hello-split-v1
+      percent: 100
