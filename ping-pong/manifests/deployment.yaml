@@ -15,7 +15,12 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: kevinjohn971/ping-pong:2.1
+          image: kevinjohn971/ping-pong:2.7
           env:
             - name: PORT
               value: "3000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ping-pong-db-secret
+                  key: DATABASE_URL
