@@ -1,0 +1,9 @@
+{
+  "name": "wikipedia-todo-cron",
+  "version": "1.0.0",
+  "description": "CronJob for creating random Wikipedia read todos",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
