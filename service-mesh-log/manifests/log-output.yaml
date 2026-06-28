@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-output-dep
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-output
+  template:
+    metadata:
+      labels:
+        app: log-output
+    spec:
+      containers:
+        - name: log-output
+          image: kevinjohn971/service-mesh-log-output:5.3
+          env:
+            - name: PORT
+              value: "8080"
+            - name: GREETER_URL
+              value: "http://greeter-svc"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-output-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: log-output
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
