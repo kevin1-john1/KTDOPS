@@ -65,20 +65,28 @@ jobs:
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v3
 
-      - name: Deploy to GKE
+      - name: Resolve namespace
         run: |
-          kubectl create namespace project --dry-run=client -o yaml | kubectl apply -f -
+          if [ "$BRANCH" = "main" ]; then
+            echo "NAMESPACE=project" >> $GITHUB_ENV
+          else
+            echo "NAMESPACE=$BRANCH" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy
+        run: |
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
           cd project-gke
 
-          kustomize edit set namespace project
+          kustomize edit set namespace "$NAMESPACE"
           kustomize edit set image PROJECT/TODO_APP="$TODO_APP_IMAGE"
           kustomize edit set image PROJECT/TODO_BACKEND="$TODO_BACKEND_IMAGE"
           kustomize edit set image PROJECT/WIKIPEDIA_TODO_CRON="$WIKI_CRON_IMAGE"
 
           kustomize build . | kubectl apply -f -
 
-          kubectl rollout status deployment/todo-app-dep -n project
-          kubectl rollout status deployment/todo-backend-dep -n project
-          kubectl rollout status statefulset/todo-postgres-stset -n project
-          kubectl get services -n project -o wide
+          kubectl rollout status deployment/todo-app-dep -n "$NAMESPACE"
+          kubectl rollout status deployment/todo-backend-dep -n "$NAMESPACE"
+          kubectl rollout status statefulset/todo-postgres-stset -n "$NAMESPACE"
+          kubectl get services -n "$NAMESPACE" -o wide
