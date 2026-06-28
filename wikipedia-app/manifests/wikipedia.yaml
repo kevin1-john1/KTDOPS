@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wikipedia-app-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wikipedia-app
+  template:
+    metadata:
+      labels:
+        app: wikipedia-app
+    spec:
+      volumes:
+        - name: wikipedia-pages
+          emptyDir: {}
+
+      initContainers:
+        - name: fetch-initial-kubernetes-page
+          image: curlimages/curl:8.12.1
+          command:
+            - sh
+            - -c
+          args:
+            - |
+              set -e
+              echo "Fetching initial Kubernetes Wikipedia page"
+              curl -L --fail --max-time 60 \
+                https://en.wikipedia.org/wiki/Kubernetes \
+                -o /usr/share/nginx/html/index.html
+              echo "<!-- Initial page fetched by init container -->" >> /usr/share/nginx/html/index.html
+              echo "Initial page ready"
+          volumeMounts:
+            - name: wikipedia-pages
+              mountPath: /usr/share/nginx/html
+
+      containers:
+        - name: nginx
+          image: nginx:1.31-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: wikipedia-pages
+              mountPath: /usr/share/nginx/html
+
+        - name: wikipedia-random-sidecar
+          image: curlimages/curl:8.12.1
+          command:
+            - sh
+            - -c
+          args:
+            - |
+              set -e
+
+              while true
+              do
+                WAIT_TIME=$((300 + RANDOM % 601))
+                echo "Waiting $WAIT_TIME seconds before fetching random Wikipedia page"
+                sleep "$WAIT_TIME"
+
+                echo "Fetching random Wikipedia page"
+                curl -L --fail --max-time 60 \
+                  https://en.wikipedia.org/wiki/Special:Random \
+                  -o /usr/share/nginx/html/index.html.tmp
+
+                mv /usr/share/nginx/html/index.html.tmp /usr/share/nginx/html/index.html
+                echo "<!-- Random page fetched by sidecar at $(date -u) -->" >> /usr/share/nginx/html/index.html
+                echo "Random page updated"
+              done
+          volumeMounts:
+            - name: wikipedia-pages
+              mountPath: /usr/share/nginx/html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wikipedia-app-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: wikipedia-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wikipedia-app-ingress
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wikipedia-app-svc
+                port:
+                  number: 80
